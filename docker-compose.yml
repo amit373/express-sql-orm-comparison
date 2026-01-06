@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Prisma App
+  prisma:
+    build:
+      context: ./apps/prisma
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/prisma_test
+      - JWT_SECRET=prisma_secret
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # TypeORM App
+  typeorm:
+    build:
+      context: ./apps/typeorm
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/typeorm_test
+      - JWT_SECRET=typeorm_secret
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Sequelize App
+  sequelize:
+    build:
+      context: ./apps/sequelize
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sequelize_test
+      - JWT_SECRET=sequelize_secret
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Drizzle App
+  drizzle:
+    build:
+      context: ./apps/drizzle
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/drizzle_test
+      - JWT_SECRET=drizzle_secret
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Objection App
+  objection:
+    build:
+      context: ./apps/objection
+      dockerfile: Dockerfile
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/objection_test
+      - JWT_SECRET=objection_secret
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: orm_comparison_postgres
+    environment:
+      POSTGRES_DB: orm_comparison
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

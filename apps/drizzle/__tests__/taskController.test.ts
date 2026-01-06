@@ -1,0 +1,483 @@
+import { Request, Response, NextFunction } from "express";
+import { TaskController } from "../src/controllers/taskController";
+import { TaskService } from "../src/services";
+import { successResponse, errorResponse } from "@packages/common";
+import { UserRole } from "@packages/types";
+
+// Mock the TaskService
+jest.mock("../src/services", () => ({
+  TaskService: jest.fn().mockImplementation(() => ({
+    createTask: jest.fn(),
+    getTaskById: jest.fn(),
+    getTasksByUser: jest.fn(),
+    updateTask: jest.fn(),
+    deleteTask: jest.fn(),
+    assignTask: jest.fn(),
+    updateTaskStatus: jest.fn(),
+    updateTaskDueDate: jest.fn(),
+    updateTaskPriority: jest.fn(),
+  })),
+}));
+
+const mockedTaskService = new TaskService() as jest.Mocked<TaskService>;
+
+// Mock Express objects
+const createMockRequest = (props: any = {}): Partial<Request> => ({
+  body: {},
+  query: {},
+  params: {},
+  ...props,
+});
+
+const createMockResponse = (): Partial<Response> => {
+  const res: Partial<Response> = {};
+  res.status = jest.fn().mockReturnThis();
+  res.json = jest.fn().mockReturnThis();
+  return res;
+};
+
+const mockNext: NextFunction = jest.fn();
+
+describe("TaskController", () => {
+  let taskController: TaskController;
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+
+  beforeEach(() => {
+    taskController = new TaskController();
+    mockReq = createMockRequest();
+    mockRes = createMockResponse();
+    jest.clearAllMocks();
+  });
+
+  describe("createTask", () => {
+    it("should create a task and return success response", async () => {
+      const taskData = {
+        title: "Test Task",
+        description: "Test Description",
+        priority: "HIGH",
+      };
+      const createdTask = {
+        id: 1,
+        title: "Test Task",
+        description: "Test Description",
+        status: "PENDING",
+        priority: "HIGH",
+        dueDate: null,
+        assignedToId: 1,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const userId = 1;
+      const userRole = UserRole.USER;
+
+      mockReq.body = taskData;
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.createTask as jest.Mock).mockResolvedValue(
+        createdTask,
+      );
+
+      await taskController.createTask(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.createTask).toHaveBeenCalledWith(
+        taskData,
+        userId,
+        userRole,
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task created successfully", createdTask, 201),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getTaskById", () => {
+    it("should retrieve a task by ID and return success response", async () => {
+      const taskId = "1";
+      const task = {
+        id: 1,
+        title: "Test Task",
+        description: "Test Description",
+        status: "PENDING",
+        priority: "HIGH",
+        dueDate: null,
+        assignedToId: 1,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const userId = 1;
+      const userRole = UserRole.USER;
+
+      mockReq.params = { id: taskId };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.getTaskById as jest.Mock).mockResolvedValue(task);
+
+      await taskController.getTaskById(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.getTaskById).toHaveBeenCalledWith(
+        1,
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task retrieved successfully", task),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getTasksByUser", () => {
+    it("should retrieve tasks assigned to the authenticated user", async () => {
+      const userId = 1;
+      const userRole = UserRole.USER;
+      const tasks = [
+        {
+          id: 1,
+          title: "Task 1",
+          description: "Description 1",
+          status: "PENDING",
+          priority: "HIGH",
+          dueDate: null,
+          assignedToId: 1,
+          createdById: 2,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 2,
+          title: "Task 2",
+          description: "Description 2",
+          status: "IN_PROGRESS",
+          priority: "MEDIUM",
+          dueDate: null,
+          assignedToId: 1,
+          createdById: 2,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.getTasksByUser as jest.Mock).mockResolvedValue(tasks);
+
+      await taskController.getTasksByUser(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.getTasksByUser).toHaveBeenCalledWith(
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Tasks retrieved successfully", tasks),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTask", () => {
+    it("should update a task by ID", async () => {
+      const taskId = "1";
+      const taskData = {
+        title: "Updated Task",
+        description: "Updated Description",
+      };
+      const userId = 1;
+      const userRole = UserRole.USER;
+      const updatedTask = {
+        id: 1,
+        title: "Updated Task",
+        description: "Updated Description",
+        status: "PENDING",
+        priority: "HIGH",
+        dueDate: null,
+        assignedToId: 1,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockReq.params = { id: taskId };
+      mockReq.body = taskData;
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.updateTask as jest.Mock).mockResolvedValue(
+        updatedTask,
+      );
+
+      await taskController.updateTask(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.updateTask).toHaveBeenCalledWith(
+        1,
+        taskData,
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task updated successfully", updatedTask),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleteTask", () => {
+    it("should delete a task and return success response", async () => {
+      const taskId = "1";
+      const userId = 1;
+      const userRole = UserRole.USER;
+
+      mockReq.params = { id: taskId };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.deleteTask as jest.Mock).mockResolvedValue(true);
+
+      await taskController.deleteTask(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.deleteTask).toHaveBeenCalledWith(
+        1,
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task deleted successfully"),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should return 404 when task to delete is not found", async () => {
+      const taskId = "1";
+      const userId = 1;
+      const userRole = UserRole.USER;
+
+      mockReq.params = { id: taskId };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.deleteTask as jest.Mock).mockResolvedValue(false);
+
+      await taskController.deleteTask(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.deleteTask).toHaveBeenCalledWith(
+        1,
+        userId,
+        userRole,
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        errorResponse("Task not found", 404),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("assignTask", () => {
+    it("should assign a task to a user", async () => {
+      const taskId = "1";
+      const assigneeId = 2;
+      const userId = 1;
+      const userRole = UserRole.ADMIN;
+      const assignedTask = {
+        id: 1,
+        title: "Test Task",
+        description: "Test Description",
+        status: "PENDING",
+        priority: "HIGH",
+        dueDate: null,
+        assignedToId: 2,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockReq.params = { id: taskId };
+      mockReq.body = { assigneeId };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.assignTask as jest.Mock).mockResolvedValue(
+        assignedTask,
+      );
+
+      await taskController.assignTask(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.assignTask).toHaveBeenCalledWith(
+        1,
+        2,
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task assigned successfully", assignedTask),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTaskStatus", () => {
+    it("should update a task's status", async () => {
+      const taskId = "1";
+      const status = "COMPLETED";
+      const userId = 1;
+      const userRole = UserRole.USER;
+      const updatedTask = {
+        id: 1,
+        title: "Test Task",
+        description: "Test Description",
+        status: "COMPLETED",
+        priority: "HIGH",
+        dueDate: null,
+        assignedToId: 1,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockReq.params = { id: taskId };
+      mockReq.body = { status };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.updateTaskStatus as jest.Mock).mockResolvedValue(
+        updatedTask,
+      );
+
+      await taskController.updateTaskStatus(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.updateTaskStatus).toHaveBeenCalledWith(
+        1,
+        status,
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task status updated successfully", updatedTask),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTaskDueDate", () => {
+    it("should update a task's due date", async () => {
+      const taskId = "1";
+      const dueDate = "2023-12-31T23:59:59.000Z";
+      const userId = 1;
+      const userRole = UserRole.USER;
+      const updatedTask = {
+        id: 1,
+        title: "Test Task",
+        description: "Test Description",
+        status: "PENDING",
+        priority: "HIGH",
+        dueDate: new Date("2023-12-31T23:59:59.000Z"),
+        assignedToId: 1,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockReq.params = { id: taskId };
+      mockReq.body = { dueDate };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.updateTaskDueDate as jest.Mock).mockResolvedValue(
+        updatedTask,
+      );
+
+      await taskController.updateTaskDueDate(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.updateTaskDueDate).toHaveBeenCalledWith(
+        1,
+        { dueDate },
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task due date updated successfully", updatedTask),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTaskPriority", () => {
+    it("should update a task's priority", async () => {
+      const taskId = "1";
+      const priority = "URGENT";
+      const userId = 1;
+      const userRole = UserRole.USER;
+      const updatedTask = {
+        id: 1,
+        title: "Test Task",
+        description: "Test Description",
+        status: "PENDING",
+        priority: "URGENT",
+        dueDate: null,
+        assignedToId: 1,
+        createdById: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockReq.params = { id: taskId };
+      mockReq.body = { priority };
+      (mockReq as any).userId = userId;
+      (mockReq as any).role = userRole;
+      (mockedTaskService.updateTaskPriority as jest.Mock).mockResolvedValue(
+        updatedTask,
+      );
+
+      await taskController.updateTaskPriority(
+        mockReq as any,
+        mockRes as Response,
+        mockNext,
+      );
+
+      expect(mockedTaskService.updateTaskPriority).toHaveBeenCalledWith(
+        1,
+        priority,
+        userId,
+        userRole,
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(
+        successResponse("Task priority updated successfully", updatedTask),
+      );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+});
